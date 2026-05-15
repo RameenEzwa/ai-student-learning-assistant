@@ -2,12 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/layout/app-layout";
-import { useGetChatHistory, useSendMessage, useListQuizzes, useSubmitQuiz, getListQuizzesQueryKey } from "@workspace/api-client-react";
+import { useGetChatHistory, useSendMessage, useListQuizzes, useSubmitQuiz, getGetChatHistoryQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, User as UserIcon, Bot, BrainCircuit } from "lucide-react";
+import { Send, User as UserIcon, Bot, BrainCircuit, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,10 @@ export default function StudentDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [message, setMessage] = useState("");
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   
   const [selectedQuiz, setSelectedQuiz] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -28,7 +32,9 @@ export default function StudentDashboard() {
     }
   }, [user, setLocation]);
 
-  const { data: chatHistory, isLoading: chatLoading, refetch: refetchChat } = useGetChatHistory();
+  const { data: chatHistory, isLoading: chatLoading } = useGetChatHistory({
+    query: { queryKey: getGetChatHistoryQueryKey() },
+  });
   const sendMessage = useSendMessage();
 
   const { data: quizzes, isLoading: quizzesLoading } = useListQuizzes();
@@ -36,23 +42,32 @@ export default function StudentDashboard() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || sendMessage.isPending) return;
     
-    const content = message;
+    const content = message.trim();
     setMessage("");
+    setPendingMessage(content);
+    setChatError(null);
     
     sendMessage.mutate({ data: { content } }, {
       onSuccess: () => {
-        refetchChat();
-      }
+        setPendingMessage(null);
+        queryClient.invalidateQueries({ queryKey: getGetChatHistoryQueryKey() });
+      },
+      onError: (err: any) => {
+        setPendingMessage(null);
+        const msg = err?.data?.error ?? err?.message ?? "Failed to send message. Please try again.";
+        setChatError(msg);
+      },
     });
   };
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const el = scrollRef.current.querySelector("[data-radix-scroll-area-viewport]") ?? scrollRef.current;
+      el.scrollTop = el.scrollHeight;
     }
-  }, [chatHistory, sendMessage.isPending]);
+  }, [chatHistory, pendingMessage]);
 
   const handleQuizSubmit = () => {
     if (!selectedQuiz) return;
@@ -70,10 +85,7 @@ export default function StudentDashboard() {
   };
 
   const activeQuizData = selectedQuiz ? quizzes?.find(q => q.id === selectedQuiz) : null;
-
-  if (chatLoading || quizzesLoading) {
-    return <div className="p-8">Loading dashboard...</div>;
-  }
+  const isEmpty = !chatLoading && (chatHistory?.length ?? 0) === 0 && !pendingMessage;
 
   return (
     <AppLayout title="Student Dashboard">
@@ -91,10 +103,15 @@ export default function StudentDashboard() {
           <CardContent className="flex-1 overflow-hidden p-0">
             <ScrollArea className="h-full p-4" ref={scrollRef}>
               <div className="space-y-4">
-                {chatHistory?.length === 0 && (
+                {chatLoading && (
+                  <div className="text-center text-muted-foreground p-8">
+                    <div className="animate-pulse">Loading conversation...</div>
+                  </div>
+                )}
+                {isEmpty && (
                   <div className="text-center text-muted-foreground p-8 flex flex-col items-center">
                     <BrainCircuit className="w-12 h-12 mb-4 text-muted" />
-                    <p>No messages yet. Say hello to your assistant!</p>
+                    <p>No messages yet. Ask your assistant anything!</p>
                   </div>
                 )}
                 {chatHistory?.map((msg) => (
@@ -102,36 +119,53 @@ export default function StudentDashboard() {
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                       {msg.role === 'user' ? <UserIcon className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                     </div>
-                    <div className={`p-3 rounded-xl text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted rounded-tl-sm'}`}>
+                    <div className={`p-3 rounded-xl text-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted rounded-tl-sm'}`}>
                       {msg.content}
                     </div>
                   </div>
                 ))}
+                {pendingMessage && (
+                  <div className="flex gap-3 max-w-[85%] ml-auto flex-row-reverse">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-primary text-primary-foreground">
+                      <UserIcon className="w-4 h-4" />
+                    </div>
+                    <div className="p-3 rounded-xl text-sm bg-primary text-primary-foreground rounded-tr-sm opacity-80">
+                      {pendingMessage}
+                    </div>
+                  </div>
+                )}
                 {sendMessage.isPending && (
                   <div className="flex gap-3 max-w-[85%] mr-auto">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-muted text-muted-foreground">
                       <Bot className="w-4 h-4" />
                     </div>
-                    <div className="p-3 rounded-xl text-sm bg-muted rounded-tl-sm flex items-center gap-2">
-                      <span className="animate-pulse">●</span>
-                      <span className="animate-pulse delay-75">●</span>
-                      <span className="animate-pulse delay-150">●</span>
+                    <div className="p-3 rounded-xl text-sm bg-muted rounded-tl-sm flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:0ms]" />
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:150ms]" />
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:300ms]" />
                     </div>
+                  </div>
+                )}
+                {chatError && (
+                  <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {chatError}
                   </div>
                 )}
               </div>
             </ScrollArea>
           </CardContent>
           <div className="p-4 border-t bg-card">
-            <form onSubmit={handleSendMessage} className="flex gap-2">
+            <form onSubmit={handleSendMessage} className="flex gap-2" data-testid="chat-form">
               <Input 
                 value={message} 
                 onChange={(e) => setMessage(e.target.value)} 
                 placeholder="Ask your assistant anything..." 
                 className="flex-1 bg-muted/50 border-0 focus-visible:ring-primary/50"
                 disabled={sendMessage.isPending}
+                data-testid="input-chat-message"
               />
-              <Button type="submit" size="icon" disabled={!message.trim() || sendMessage.isPending}>
+              <Button type="submit" size="icon" disabled={!message.trim() || sendMessage.isPending} data-testid="button-send-message">
                 <Send className="w-4 h-4" />
               </Button>
             </form>

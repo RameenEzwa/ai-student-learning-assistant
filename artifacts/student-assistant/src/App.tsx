@@ -4,11 +4,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import Login from "@/pages/auth/login";
 import StudentDashboard from "@/pages/student";
 import AdminDashboard from "@/pages/admin";
 import ClientDashboard from "@/pages/client";
+
+// Wire the stored auth token into every API request
+setAuthTokenGetter(() => localStorage.getItem("auth_token"));
 
 const queryClient = new QueryClient();
 
