@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BookOpen, BrainCircuit, LineChart, Target } from "lucide-react";
+import { BookOpen, BrainCircuit, LineChart, Target, Info } from "lucide-react";
 import { useEffect } from "react";
 
 const loginSchema = z.object({
@@ -103,8 +103,16 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="relative z-10 text-sm text-sidebar-foreground/50">
-          © {new Date().getFullYear()} Learning Assistant Platform. All rights reserved.
+        <div className="relative z-10 flex items-center justify-between text-sm text-sidebar-foreground/50">
+          <span>© {new Date().getFullYear()} Learning Assistant Platform</span>
+          <button
+            type="button"
+            onClick={() => window.location.href = (import.meta.env.BASE_URL || "/") + "about"}
+            className="flex items-center gap-1.5 hover:text-sidebar-foreground/80 transition-colors underline underline-offset-2"
+          >
+            <Info className="w-3.5 h-3.5" />
+            SDG 4 · Vision 2030 · 2035
+          </button>
         </div>
       </div>
 

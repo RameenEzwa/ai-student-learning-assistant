@@ -143,3 +143,57 @@ export interface PerformancePoint {
   subject: string;
 }
 
+export type GenerateQuizInputDifficulty = typeof GenerateQuizInputDifficulty[keyof typeof GenerateQuizInputDifficulty];
+
+
+export const GenerateQuizInputDifficulty = {
+  easy: 'easy',
+  medium: 'medium',
+  hard: 'hard',
+} as const;
+
+export interface GenerateQuizInput {
+  topic: string;
+  difficulty?: GenerateQuizInputDifficulty;
+}
+
+export interface GeneratedQuestion {
+  id: number;
+  text: string;
+  options: string[];
+  correctAnswer: number;
+}
+
+export interface GeneratedQuiz {
+  topic: string;
+  difficulty: string;
+  questions: GeneratedQuestion[];
+}
+
+export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];
+
+
+export const ActivityItemType = {
+  quiz: 'quiz',
+  chat: 'chat',
+} as const;
+
+export interface ActivityItem {
+  id: string;
+  type: ActivityItemType;
+  userId: number;
+  userName: string;
+  description: string;
+  score?: number;
+  createdAt: string;
+}
+
+export interface StudentStat {
+  id: number;
+  name: string;
+  email: string;
+  totalQuizzes: number;
+  averageScore: number;
+  lastActive: string;
+}
+

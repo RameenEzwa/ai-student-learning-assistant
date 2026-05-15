@@ -2,21 +2,25 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/layout/app-layout";
-import { useGetAdminStats, useListUsers, useDeleteUser, getListUsersQueryKey, getGetAdminStatsQueryKey, useCreateUser } from "@workspace/api-client-react";
+import {
+  useGetAdminStats, useListUsers, useDeleteUser, useCreateUser,
+  useGetAdminActivity, getListUsersQueryKey, getGetAdminStatsQueryKey,
+  getGetAdminActivityQueryKey, UserRole,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2, Users, UserPlus, BookOpen, ShieldAlert, GraduationCap, Building2, MoreHorizontal } from "lucide-react";
+import { Trash2, Users, UserPlus, BookOpen, ShieldAlert, MessageSquare, Trophy, Clock, Activity } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useState } from "react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -27,6 +31,30 @@ const createUserSchema = z.object({
 
 type CreateUserFormValues = z.infer<typeof createUserSchema>;
 
+function getInitials(name: string) {
+  return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function roleBadgeClass(role: string) {
+  switch (role) {
+    case "admin": return "bg-blue-100 text-blue-700 border-blue-200";
+    case "student": return "bg-green-100 text-green-700 border-green-200";
+    case "client": return "bg-purple-100 text-purple-700 border-purple-200";
+    default: return "bg-muted text-muted-foreground border-border";
+  }
+}
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -34,13 +62,12 @@ export default function AdminDashboard() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (user && user.role !== "admin") {
-      setLocation("/");
-    }
+    if (user && user.role !== "admin") setLocation("/");
   }, [user, setLocation]);
 
   const { data: stats, isLoading: statsLoading } = useGetAdminStats();
   const { data: users, isLoading: usersLoading } = useListUsers();
+  const { data: activity, isLoading: activityLoading } = useGetAdminActivity();
 
   const deleteUser = useDeleteUser();
   const createUser = useCreateUser();
@@ -51,19 +78,14 @@ export default function AdminDashboard() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
-        }
+        },
       });
     }
   };
 
   const form = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      role: "student",
-    },
+    defaultValues: { name: "", email: "", password: "", role: "student" },
   });
 
   const onSubmit = (data: CreateUserFormValues) => {
@@ -73,140 +95,88 @@ export default function AdminDashboard() {
         form.reset();
         queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
-      }
+        queryClient.invalidateQueries({ queryKey: getGetAdminActivityQueryKey() });
+      },
     });
   };
 
   if (statsLoading || usersLoading) {
-    return (
-      <AppLayout title="Dashboard">
-        <div className="p-8 text-center text-muted-foreground animate-pulse">Loading dashboard...</div>
-      </AppLayout>
-    );
+    return <div className="p-8 text-muted-foreground">Loading admin dashboard...</div>;
   }
 
-  const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, value: number, icon: any, colorClass: string }) => (
-    <Card className="border-border shadow-sm overflow-hidden">
-      <CardContent className="p-6 flex items-center gap-5">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${colorClass}`}>
-          <Icon className="w-7 h-7" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">{title}</p>
-          <p className="text-3xl font-black text-foreground">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const getRoleBadge = (role: string) => {
-    switch(role) {
-      case 'admin': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Admin</span>;
-      case 'student': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Student</span>;
-      case 'client': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">Client</span>;
-      default: return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200">{role}</span>;
-    }
-  };
-
   return (
-    <AppLayout title="Dashboard Overview">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <StatCard 
-          title="Total Users" 
-          value={stats?.totalUsers || 0} 
-          icon={Users} 
-          colorClass="bg-blue-100 text-blue-700" 
-        />
-        <StatCard 
-          title="Students" 
-          value={stats?.totalStudents || 0} 
-          icon={GraduationCap} 
-          colorClass="bg-emerald-100 text-emerald-700" 
-        />
-        <StatCard 
-          title="Clients" 
-          value={stats?.totalClients || 0} 
-          icon={Building2} 
-          colorClass="bg-purple-100 text-purple-700" 
-        />
-        <StatCard 
-          title="Admins" 
-          value={stats?.totalAdmins || 0} 
-          icon={ShieldAlert} 
-          colorClass="bg-orange-100 text-orange-700" 
-        />
+    <AppLayout title="Admin Dashboard">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {[
+          { label: "Total Users", value: stats?.totalUsers ?? 0, icon: Users, color: "bg-blue-50 text-blue-600" },
+          { label: "Students", value: stats?.totalStudents ?? 0, icon: BookOpen, color: "bg-green-50 text-green-600" },
+          { label: "Clients", value: stats?.totalClients ?? 0, icon: Users, color: "bg-purple-50 text-purple-600" },
+          { label: "Admins", value: stats?.totalAdmins ?? 0, icon: ShieldAlert, color: "bg-orange-50 text-orange-600" },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <Card key={label} className="border-border shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <span className="text-sm font-semibold text-muted-foreground">{label}</span>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-black text-foreground">{value}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card className="border-border shadow-sm rounded-xl overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between border-b bg-card px-8 py-6">
-          <div>
-            <CardTitle className="text-xl font-bold">User Directory</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1 font-medium">Manage platform access and roles</p>
-          </div>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg" className="rounded-full font-semibold shadow-sm">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add New User
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md rounded-2xl">
-              <DialogHeader className="pb-4">
-                <DialogTitle className="text-xl font-bold">Create New User</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-2">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-semibold">Full Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Jane Doe" {...field} className="h-11" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="font-semibold">Email Address</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="jane@example.com" {...field} className="h-11" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-2 gap-5">
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* User Management */}
+        <div className="xl:col-span-2">
+          <Card className="border-border shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold">User Management</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">Manage all platform users</p>
+              </div>
+              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="flex items-center gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Add User
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New User</DialogTitle>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-2">
+                      <FormField control={form.control} name="name" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-semibold">Initial Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} className="h-11" />
-                          </FormControl>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="role"
-                      render={({ field }) => (
+                      )} />
+                      <FormField control={form.control} name="email" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-semibold">Account Role</FormLabel>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl><Input type="email" placeholder="john@example.com" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="password" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl><Input type="password" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="role" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Role</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="h-11">
-                                <SelectValue placeholder="Select a role" />
-                              </SelectTrigger>
+                              <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="student">Student</SelectItem>
@@ -216,81 +186,124 @@ export default function AdminDashboard() {
                           </Select>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="pt-4">
-                    <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={createUser.isPending}>
-                      {createUser.isPending ? "Creating Account..." : "Create Account"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-muted/40">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="font-semibold pl-8">User</TableHead>
-                <TableHead className="font-semibold">Role</TableHead>
-                <TableHead className="font-semibold">Date Added</TableHead>
-                <TableHead className="text-right pr-8 font-semibold">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users?.map((u) => (
-                <TableRow key={u.id} className="group hover:bg-muted/20">
-                  <TableCell className="pl-8 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-foreground">{u.name}</span>
-                        <span className="text-sm text-muted-foreground">{u.email}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-4">
-                    {getRoleBadge(u.role)}
-                  </TableCell>
-                  <TableCell className="py-4 text-sm font-medium text-muted-foreground">
-                    {new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </TableCell>
-                  <TableCell className="text-right pr-8 py-4">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                        <DropdownMenuItem 
-                          className="text-destructive focus:text-destructive focus:bg-destructive/10 font-medium cursor-pointer py-2"
+                      )} />
+                      <Button type="submit" className="w-full" disabled={createUser.isPending}>
+                        {createUser.isPending ? "Creating..." : "Create User"}
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="pl-6">User</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead className="pr-6 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users?.map((u) => (
+                    <TableRow key={u.id} className="group">
+                      <TableCell className="pl-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                            {getInitials(u.name)}
+                          </div>
+                          <span className="font-semibold text-sm">{u.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
+                      <TableCell>
+                        <span className={`capitalize px-2.5 py-0.5 rounded-full text-xs font-bold border ${roleBadgeClass(u.role)}`}>
+                          {u.role}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="pr-6 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDelete(u.id)}
                           disabled={u.id === user?.id || deleteUser.isPending}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
                         >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {users?.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-12 text-muted-foreground font-medium">
-                    No users found in the system.
-                  </TableCell>
-                </TableRow>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Student Activity Feed */}
+        <div>
+          <Card className="border-border shadow-sm h-full">
+            <CardHeader className="border-b">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold">Live Activity</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Recent student actions</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {activityLoading ? (
+                <div className="p-6 space-y-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="flex gap-3 animate-pulse">
+                      <div className="w-8 h-8 rounded-full bg-muted shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 bg-muted rounded w-3/4" />
+                        <div className="h-2.5 bg-muted rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (activity?.length ?? 0) === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">
+                  No recent activity yet.
+                </div>
+              ) : (
+                <div className="divide-y divide-border max-h-[520px] overflow-y-auto">
+                  {activity?.map((item) => (
+                    <div key={item.id} className="flex items-start gap-3 px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                      <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 ${item.type === "quiz" ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"}`}>
+                        {item.type === "quiz" ? <Trophy className="w-3.5 h-3.5" /> : <MessageSquare className="w-3.5 h-3.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{item.userName}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 line-clamp-2">{item.description}</p>
+                        {item.type === "quiz" && item.score !== undefined && (
+                          <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded-full ${item.score >= 60 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                            {item.score >= 60 ? "Passed" : "Failed"} · {item.score}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                        <Clock className="w-3 h-3" />
+                        {timeAgo(item.createdAt)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </AppLayout>
   );
 }

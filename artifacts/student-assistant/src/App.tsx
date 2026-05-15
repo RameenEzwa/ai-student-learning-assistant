@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import Login from "@/pages/auth/login";
+import AboutPage from "@/pages/about";
 import StudentDashboard from "@/pages/student";
 import AdminDashboard from "@/pages/admin";
 import ClientDashboard from "@/pages/client";
@@ -29,6 +30,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Login} />
+      <Route path="/about" component={AboutPage} />
       <Route path="/dashboard">
         {() => <ProtectedRoute component={StudentDashboard} allowedRoles={["student"]} />}
       </Route>

@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { eq, and, avg, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, quizzesTable, quizResultsTable } from "@workspace/db";
-import { SubmitQuizBody, SubmitQuizParams } from "@workspace/api-zod";
+import { SubmitQuizBody, SubmitQuizParams, GenerateQuizBody } from "@workspace/api-zod";
+import { ai } from "@workspace/integrations-gemini-ai";
 
 const router: IRouter = Router();
 
@@ -29,6 +30,69 @@ router.get("/quizzes", async (_req, res): Promise<void> => {
     difficulty: q.difficulty,
     questions: (q.questions as any[]).map(({ correctAnswer: _, ...rest }) => rest),
   })));
+});
+
+router.post("/quizzes/generate", async (req, res): Promise<void> => {
+  const userId = getUserIdFromToken(req.headers.authorization);
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const parsed = GenerateQuizBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { topic, difficulty = "medium" } = parsed.data;
+
+  const prompt = `Generate a ${difficulty} difficulty quiz with exactly 5 multiple-choice questions about: "${topic}".
+
+Return ONLY a valid JSON object with this exact structure (no markdown, no explanation):
+{
+  "questions": [
+    {
+      "id": 1,
+      "text": "Question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0
+    }
+  ]
+}
+
+Rules:
+- Each question must have exactly 4 options
+- correctAnswer is the 0-based index of the correct option
+- Questions should be appropriate for students
+- Make sure questions are varied and test different aspects of the topic`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: { maxOutputTokens: 2048 },
+  });
+
+  const raw = response.text ?? "";
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    res.status(500).json({ error: "Failed to generate quiz. Please try again." });
+    return;
+  }
+
+  let parsed2: { questions: Array<{ id: number; text: string; options: string[]; correctAnswer: number }> };
+  try {
+    parsed2 = JSON.parse(jsonMatch[0]);
+  } catch {
+    res.status(500).json({ error: "Failed to parse generated quiz. Please try again." });
+    return;
+  }
+
+  res.json({
+    topic,
+    difficulty,
+    questions: parsed2.questions,
+  });
 });
 
 router.post("/quizzes/:id/submit", async (req, res): Promise<void> => {
