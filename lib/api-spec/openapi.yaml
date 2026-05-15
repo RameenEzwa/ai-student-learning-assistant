@@ -130,6 +130,36 @@ paths:
         "200":
           description: Deleted
 
+  /admin/activity:
+    get:
+      operationId: getAdminActivity
+      tags: [users]
+      summary: Get recent student activity feed (admin only)
+      responses:
+        "200":
+          description: Activity items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /admin/student-stats:
+    get:
+      operationId: getStudentStats
+      tags: [users]
+      summary: Get per-student statistics (admin/client)
+      responses:
+        "200":
+          description: Student statistics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentStat"
+
   /admin/stats:
     get:
       operationId: getAdminStats
@@ -175,6 +205,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatMessage"
+
+  /quizzes/generate:
+    post:
+      operationId: generateQuiz
+      tags: [quizzes]
+      summary: Generate a quiz on a topic using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateQuizInput"
+      responses:
+        "200":
+          description: Generated quiz
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedQuiz"
 
   /quizzes:
     get:
@@ -461,4 +510,79 @@ components:
         score:
           type: integer
         subject:
+          type: string
+
+    GenerateQuizInput:
+      type: object
+      required: [topic]
+      properties:
+        topic:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+
+    GeneratedQuestion:
+      type: object
+      required: [id, text, options, correctAnswer]
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        correctAnswer:
+          type: integer
+
+    GeneratedQuiz:
+      type: object
+      required: [topic, difficulty, questions]
+      properties:
+        topic:
+          type: string
+        difficulty:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneratedQuestion"
+
+    ActivityItem:
+      type: object
+      required: [id, type, userId, userName, description, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [quiz, chat]
+        userId:
+          type: integer
+        userName:
+          type: string
+        description:
+          type: string
+        score:
+          type: integer
+        createdAt:
+          type: string
+
+    StudentStat:
+      type: object
+      required: [id, name, email, totalQuizzes, averageScore, lastActive]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        totalQuizzes:
+          type: integer
+        averageScore:
+          type: integer
+        lastActive:
           type: string

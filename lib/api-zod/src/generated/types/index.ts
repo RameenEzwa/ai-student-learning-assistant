@@ -6,11 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './activityItem';
+export * from './activityItemType';
 export * from './adminStats';
 export * from './authResponse';
 export * from './chatMessage';
 export * from './chatMessageRole';
 export * from './errorResponse';
+export * from './generatedQuestion';
+export * from './generatedQuiz';
+export * from './generateQuizInput';
+export * from './generateQuizInputDifficulty';
 export * from './healthStatus';
 export * from './loginInput';
 export * from './messageInput';
@@ -22,6 +28,7 @@ export * from './quizDifficulty';
 export * from './quizReport';
 export * from './quizResult';
 export * from './quizSubmission';
+export * from './studentStat';
 export * from './user';
 export * from './userInput';
 export * from './userInputRole';

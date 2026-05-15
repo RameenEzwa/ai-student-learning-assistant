@@ -20,10 +20,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActivityItem,
   AdminStats,
   AuthResponse,
   ChatMessage,
   ErrorResponse,
+  GenerateQuizInput,
+  GeneratedQuiz,
   HealthStatus,
   LoginInput,
   MessageInput,
@@ -33,6 +36,7 @@ import type {
   QuizReport,
   QuizResult,
   QuizSubmission,
+  StudentStat,
   User,
   UserInput
 } from './api.schemas';
@@ -562,6 +566,160 @@ export const useDeleteUser = <TError = ErrorType<unknown>,
       return useMutation(getDeleteUserMutationOptions(options));
     }
 
+export const getGetAdminActivityUrl = () => {
+
+
+
+
+  return `/api/admin/activity`
+}
+
+/**
+ * @summary Get recent student activity feed (admin only)
+ */
+export const getAdminActivity = async ( options?: RequestInit): Promise<ActivityItem[]> => {
+
+  return customFetch<ActivityItem[]>(getGetAdminActivityUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminActivityQueryKey = () => {
+    return [
+    `/api/admin/activity`
+    ] as const;
+    }
+
+
+export const getGetAdminActivityQueryOptions = <TData = Awaited<ReturnType<typeof getAdminActivity>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminActivityQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminActivity>>> = ({ signal }) => getAdminActivity({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminActivityQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminActivity>>>
+export type GetAdminActivityQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get recent student activity feed (admin only)
+ */
+
+export function useGetAdminActivity<TData = Awaited<ReturnType<typeof getAdminActivity>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminActivityQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetStudentStatsUrl = () => {
+
+
+
+
+  return `/api/admin/student-stats`
+}
+
+/**
+ * @summary Get per-student statistics (admin/client)
+ */
+export const getStudentStats = async ( options?: RequestInit): Promise<StudentStat[]> => {
+
+  return customFetch<StudentStat[]>(getGetStudentStatsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStudentStatsQueryKey = () => {
+    return [
+    `/api/admin/student-stats`
+    ] as const;
+    }
+
+
+export const getGetStudentStatsQueryOptions = <TData = Awaited<ReturnType<typeof getStudentStats>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStudentStatsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStudentStats>>> = ({ signal }) => getStudentStats({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStudentStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStudentStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getStudentStats>>>
+export type GetStudentStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get per-student statistics (admin/client)
+ */
+
+export function useGetStudentStats<TData = Awaited<ReturnType<typeof getStudentStats>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStudentStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStudentStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getGetAdminStatsUrl = () => {
 
 
@@ -785,6 +943,77 @@ export const useSendMessage = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSendMessageMutationOptions(options));
+    }
+
+export const getGenerateQuizUrl = () => {
+
+
+
+
+  return `/api/quizzes/generate`
+}
+
+/**
+ * @summary Generate a quiz on a topic using AI
+ */
+export const generateQuiz = async (generateQuizInput: GenerateQuizInput, options?: RequestInit): Promise<GeneratedQuiz> => {
+
+  return customFetch<GeneratedQuiz>(getGenerateQuizUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      generateQuizInput,)
+  }
+);}
+
+
+
+
+export const getGenerateQuizMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateQuiz>>, TError,{data: BodyType<GenerateQuizInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateQuiz>>, TError,{data: BodyType<GenerateQuizInput>}, TContext> => {
+
+const mutationKey = ['generateQuiz'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateQuiz>>, {data: BodyType<GenerateQuizInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateQuiz(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateQuizMutationResult = NonNullable<Awaited<ReturnType<typeof generateQuiz>>>
+    export type GenerateQuizMutationBody = BodyType<GenerateQuizInput>
+    export type GenerateQuizMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Generate a quiz on a topic using AI
+ */
+export const useGenerateQuiz = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateQuiz>>, TError,{data: BodyType<GenerateQuizInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateQuiz>>,
+        TError,
+        {data: BodyType<GenerateQuizInput>},
+        TContext
+      > => {
+      return useMutation(getGenerateQuizMutationOptions(options));
     }
 
 export const getListQuizzesUrl = () => {

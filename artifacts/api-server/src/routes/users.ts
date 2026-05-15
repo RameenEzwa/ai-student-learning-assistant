@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, count } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { eq, count, desc } from "drizzle-orm";
+import { db, usersTable, quizResultsTable, quizzesTable, chatMessagesTable } from "@workspace/db";
 import { CreateUserBody, DeleteUserParams } from "@workspace/api-zod";
 import { hashPassword } from "./auth";
 
@@ -82,6 +82,121 @@ router.get("/admin/stats", async (_req, res): Promise<void> => {
   }));
 
   res.json({ totalUsers, totalStudents, totalAdmins, totalClients, recentUsers });
+});
+
+router.get("/admin/activity", async (_req, res): Promise<void> => {
+  const quizActivity = await db
+    .select({
+      id: quizResultsTable.id,
+      userId: quizResultsTable.userId,
+      score: quizResultsTable.score,
+      passed: quizResultsTable.passed,
+      completedAt: quizResultsTable.completedAt,
+      quizTitle: quizzesTable.title,
+      userName: usersTable.name,
+    })
+    .from(quizResultsTable)
+    .leftJoin(quizzesTable, eq(quizResultsTable.quizId, quizzesTable.id))
+    .leftJoin(usersTable, eq(quizResultsTable.userId, usersTable.id))
+    .orderBy(desc(quizResultsTable.completedAt))
+    .limit(20);
+
+  const chatActivity = await db
+    .select({
+      id: chatMessagesTable.id,
+      userId: chatMessagesTable.userId,
+      content: chatMessagesTable.content,
+      role: chatMessagesTable.role,
+      createdAt: chatMessagesTable.createdAt,
+      userName: usersTable.name,
+    })
+    .from(chatMessagesTable)
+    .leftJoin(usersTable, eq(chatMessagesTable.userId, usersTable.id))
+    .where(eq(chatMessagesTable.role, "user"))
+    .orderBy(desc(chatMessagesTable.createdAt))
+    .limit(20);
+
+  const quizItems = quizActivity.map(q => ({
+    id: `quiz-${q.id}`,
+    type: "quiz" as const,
+    userId: q.userId,
+    userName: q.userName ?? "Unknown",
+    description: `Completed "${q.quizTitle ?? "a quiz"}" — scored ${q.score}%`,
+    score: q.score,
+    createdAt: q.completedAt.toISOString(),
+  }));
+
+  const chatItems = chatActivity.map(c => ({
+    id: `chat-${c.id}`,
+    type: "chat" as const,
+    userId: c.userId,
+    userName: c.userName ?? "Unknown",
+    description: `Asked: "${c.content.slice(0, 60)}${c.content.length > 60 ? "…" : ""}"`,
+    score: undefined as unknown as number,
+    createdAt: c.createdAt.toISOString(),
+  }));
+
+  const all = [...quizItems, ...chatItems]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 30);
+
+  res.json(all);
+});
+
+router.get("/admin/student-stats", async (_req, res): Promise<void> => {
+  const students = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.role, "student"));
+
+  const results = await db
+    .select({
+      userId: quizResultsTable.userId,
+      score: quizResultsTable.score,
+      completedAt: quizResultsTable.completedAt,
+    })
+    .from(quizResultsTable);
+
+  const chatActivity = await db
+    .select({
+      userId: chatMessagesTable.userId,
+      createdAt: chatMessagesTable.createdAt,
+    })
+    .from(chatMessagesTable)
+    .where(eq(chatMessagesTable.role, "user"));
+
+  const stats = students.map(s => {
+    const studentResults = results.filter(r => r.userId === s.id);
+    const totalQuizzes = studentResults.length;
+    const averageScore = totalQuizzes > 0
+      ? Math.round(studentResults.reduce((sum, r) => sum + r.score, 0) / totalQuizzes)
+      : 0;
+
+    const lastQuiz = studentResults.sort((a, b) =>
+      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+    )[0];
+
+    const lastChat = chatActivity
+      .filter(c => c.userId === s.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+    const lastActivityDate = lastQuiz && lastChat
+      ? new Date(lastQuiz.completedAt) > new Date(lastChat.createdAt)
+        ? lastQuiz.completedAt
+        : lastChat.createdAt
+      : lastQuiz?.completedAt ?? lastChat?.createdAt ?? s.createdAt;
+
+    return {
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      totalQuizzes,
+      averageScore,
+      lastActive: new Date(lastActivityDate).toISOString(),
+    };
+  });
+
+  res.json(stats);
 });
 
 export default router;

@@ -81,6 +81,35 @@ export const DeleteUserParams = zod.object({
 
 
 /**
+ * @summary Get recent student activity feed (admin only)
+ */
+export const GetAdminActivityResponseItem = zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['quiz', 'chat']),
+  "userId": zod.number(),
+  "userName": zod.string(),
+  "description": zod.string(),
+  "score": zod.number().optional(),
+  "createdAt": zod.string()
+})
+export const GetAdminActivityResponse = zod.array(GetAdminActivityResponseItem)
+
+
+/**
+ * @summary Get per-student statistics (admin/client)
+ */
+export const GetStudentStatsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string(),
+  "totalQuizzes": zod.number(),
+  "averageScore": zod.number(),
+  "lastActive": zod.string()
+})
+export const GetStudentStatsResponse = zod.array(GetStudentStatsResponseItem)
+
+
+/**
  * @summary Get admin dashboard stats
  */
 export const GetAdminStatsResponse = zod.object({
@@ -122,6 +151,26 @@ export const SendMessageResponse = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Generate a quiz on a topic using AI
+ */
+export const GenerateQuizBody = zod.object({
+  "topic": zod.string(),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']).optional()
+})
+
+export const GenerateQuizResponse = zod.object({
+  "topic": zod.string(),
+  "difficulty": zod.string(),
+  "questions": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "options": zod.array(zod.string()),
+  "correctAnswer": zod.number()
+}))
 })
 
 
