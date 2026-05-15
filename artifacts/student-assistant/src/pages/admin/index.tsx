@@ -2,21 +2,21 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/layout/app-layout";
-import { useGetAdminStats, useListUsers, useDeleteUser, getListUsersQueryKey, getGetAdminStatsQueryKey, useCreateUser, UserRole } from "@workspace/api-client-react";
+import { useGetAdminStats, useListUsers, useDeleteUser, getListUsersQueryKey, getGetAdminStatsQueryKey, useCreateUser } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Trash2, Users, UserPlus, BookOpen, ShieldAlert } from "lucide-react";
+import { Trash2, Users, UserPlus, BookOpen, ShieldAlert, GraduationCap, Building2, MoreHorizontal } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const createUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -78,74 +78,92 @@ export default function AdminDashboard() {
   };
 
   if (statsLoading || usersLoading) {
-    return <div className="p-8">Loading admin dashboard...</div>;
+    return (
+      <AppLayout title="Dashboard">
+        <div className="p-8 text-center text-muted-foreground animate-pulse">Loading dashboard...</div>
+      </AppLayout>
+    );
   }
 
+  const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, value: number, icon: any, colorClass: string }) => (
+    <Card className="border-border shadow-sm overflow-hidden">
+      <CardContent className="p-6 flex items-center gap-5">
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${colorClass}`}>
+          <Icon className="w-7 h-7" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-1">{title}</p>
+          <p className="text-3xl font-black text-foreground">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const getRoleBadge = (role: string) => {
+    switch(role) {
+      case 'admin': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">Admin</span>;
+      case 'student': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Student</span>;
+      case 'client': return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">Client</span>;
+      default: return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200">{role}</span>;
+    }
+  };
+
   return (
-    <AppLayout title="Admin Dashboard">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Students</CardTitle>
-            <BookOpen className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalStudents || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Clients</CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalClients || 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Admins</CardTitle>
-            <ShieldAlert className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalAdmins || 0}</div>
-          </CardContent>
-        </Card>
+    <AppLayout title="Dashboard Overview">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <StatCard 
+          title="Total Users" 
+          value={stats?.totalUsers || 0} 
+          icon={Users} 
+          colorClass="bg-blue-100 text-blue-700" 
+        />
+        <StatCard 
+          title="Students" 
+          value={stats?.totalStudents || 0} 
+          icon={GraduationCap} 
+          colorClass="bg-emerald-100 text-emerald-700" 
+        />
+        <StatCard 
+          title="Clients" 
+          value={stats?.totalClients || 0} 
+          icon={Building2} 
+          colorClass="bg-purple-100 text-purple-700" 
+        />
+        <StatCard 
+          title="Admins" 
+          value={stats?.totalAdmins || 0} 
+          icon={ShieldAlert} 
+          colorClass="bg-orange-100 text-orange-700" 
+        />
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>User Management</CardTitle>
+      <Card className="border-border shadow-sm rounded-xl overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between border-b bg-card px-8 py-6">
+          <div>
+            <CardTitle className="text-xl font-bold">User Directory</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1 font-medium">Manage platform access and roles</p>
+          </div>
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="lg" className="rounded-full font-semibold shadow-sm">
                 <UserPlus className="w-4 h-4 mr-2" />
-                Add User
+                Add New User
               </Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New User</DialogTitle>
+            <DialogContent className="sm:max-w-md rounded-2xl">
+              <DialogHeader className="pb-4">
+                <DialogTitle className="text-xl font-bold">Create New User</DialogTitle>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 pt-2">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel className="font-semibold">Full Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="John Doe" {...field} />
+                          <Input placeholder="Jane Doe" {...field} className="h-11" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -156,87 +174,119 @@ export default function AdminDashboard() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel className="font-semibold">Email Address</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="john@example.com" {...field} />
+                          <Input type="email" placeholder="jane@example.com" {...field} className="h-11" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Role</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <div className="grid grid-cols-2 gap-5">
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold">Initial Password</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
+                            <Input type="password" {...field} className="h-11" />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="student">Student</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="client">Client</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={createUser.isPending}>
-                    {createUser.isPending ? "Creating..." : "Create User"}
-                  </Button>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="font-semibold">Account Role</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-11">
+                                <SelectValue placeholder="Select a role" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="student">Student</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="client">Client</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="pt-4">
+                    <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={createUser.isPending}>
+                      {createUser.isPending ? "Creating Account..." : "Create Account"}
+                    </Button>
+                  </div>
                 </form>
               </Form>
             </DialogContent>
           </Dialog>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+            <TableHeader className="bg-muted/40">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="font-semibold pl-8">User</TableHead>
+                <TableHead className="font-semibold">Role</TableHead>
+                <TableHead className="font-semibold">Date Added</TableHead>
+                <TableHead className="text-right pr-8 font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users?.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell className="font-medium">{u.name}</TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell className="capitalize">{u.role}</TableCell>
-                  <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(u.id)}
-                      disabled={u.id === user?.id || deleteUser.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
+                <TableRow key={u.id} className="group hover:bg-muted/20">
+                  <TableCell className="pl-8 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
+                        {u.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-foreground">{u.name}</span>
+                        <span className="text-sm text-muted-foreground">{u.email}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-4">
+                    {getRoleBadge(u.role)}
+                  </TableCell>
+                  <TableCell className="py-4 text-sm font-medium text-muted-foreground">
+                    {new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </TableCell>
+                  <TableCell className="text-right pr-8 py-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10 font-medium cursor-pointer py-2"
+                          onClick={() => handleDelete(u.id)}
+                          disabled={u.id === user?.id || deleteUser.isPending}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
+              {users?.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-12 text-muted-foreground font-medium">
+                    No users found in the system.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
