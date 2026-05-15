@@ -1,22 +1,30 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AI Student Learning Assistant API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: User management
+  - name: chat
+    description: AI Chat
+  - name: quizzes
+    description: Quiz management
+  - name: progress
+    description: Student progress and analytics
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +32,233 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [users]
+      summary: Get admin dashboard stats
+      responses:
+        "200":
+          description: Admin statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /chat/messages:
+    get:
+      operationId: getChatHistory
+      tags: [chat]
+      summary: Get chat history for current user
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+
+    post:
+      operationId: sendMessage
+      tags: [chat]
+      summary: Send a message to the AI assistant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  /quizzes:
+    get:
+      operationId: listQuizzes
+      tags: [quizzes]
+      summary: List available quizzes
+      responses:
+        "200":
+          description: List of quizzes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quiz"
+
+  /quizzes/{id}/submit:
+    post:
+      operationId: submitQuiz
+      tags: [quizzes]
+      summary: Submit quiz answers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSubmission"
+      responses:
+        "200":
+          description: Quiz result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizResult"
+
+  /progress:
+    get:
+      operationId: getProgress
+      tags: [progress]
+      summary: Get student progress overview
+      responses:
+        "200":
+          description: Progress data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressOverview"
+
+  /progress/reports:
+    get:
+      operationId: getQuizReports
+      tags: [progress]
+      summary: Get quiz history and reports
+      responses:
+        "200":
+          description: Quiz reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizReport"
+
+  /progress/performance:
+    get:
+      operationId: getPerformanceData
+      tags: [progress]
+      summary: Get performance chart data
+      responses:
+        "200":
+          description: Performance over time
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PerformancePoint"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +266,199 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    User:
+      type: object
+      required: [id, email, name, role, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, student, client]
+        createdAt:
+          type: string
+
+    UserInput:
+      type: object
+      required: [email, name, role, password]
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, student, client]
+        password:
+          type: string
+
+    AdminStats:
+      type: object
+      required: [totalUsers, totalStudents, totalAdmins, totalClients, recentUsers]
+      properties:
+        totalUsers:
+          type: integer
+        totalStudents:
+          type: integer
+        totalAdmins:
+          type: integer
+        totalClients:
+          type: integer
+        recentUsers:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+
+    ChatMessage:
+      type: object
+      required: [id, role, content, createdAt]
+      properties:
+        id:
+          type: integer
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        createdAt:
+          type: string
+
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+
+    Quiz:
+      type: object
+      required: [id, title, subject, questionCount, difficulty]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subject:
+          type: string
+        questionCount:
+          type: integer
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+
+    Question:
+      type: object
+      required: [id, text, options]
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+
+    QuizSubmission:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          items:
+            type: integer
+
+    QuizResult:
+      type: object
+      required: [quizId, score, totalQuestions, correct, passed, completedAt]
+      properties:
+        quizId:
+          type: integer
+        score:
+          type: integer
+        totalQuestions:
+          type: integer
+        correct:
+          type: integer
+        passed:
+          type: boolean
+        completedAt:
+          type: string
+
+    ProgressOverview:
+      type: object
+      required: [totalQuizzes, averageScore, topSubject, streak, completionRate]
+      properties:
+        totalQuizzes:
+          type: integer
+        averageScore:
+          type: integer
+        topSubject:
+          type: string
+        streak:
+          type: integer
+        completionRate:
+          type: integer
+
+    QuizReport:
+      type: object
+      required: [id, quizTitle, subject, score, passed, completedAt]
+      properties:
+        id:
+          type: integer
+        quizTitle:
+          type: string
+        subject:
+          type: string
+        score:
+          type: integer
+        passed:
+          type: boolean
+        completedAt:
+          type: string
+
+    PerformancePoint:
+      type: object
+      required: [date, score, subject]
+      properties:
+        date:
+          type: string
+        score:
+          type: integer
+        subject:
+          type: string
