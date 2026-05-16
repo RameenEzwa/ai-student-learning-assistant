@@ -88,10 +88,37 @@ Rules:
     return;
   }
 
+  if (!Array.isArray(parsed2.questions) || parsed2.questions.length === 0) {
+    res.status(500).json({ error: "AI returned an unexpected format. Please try again." });
+    return;
+  }
+
+  const validQuestions = parsed2.questions.filter(
+    (q) =>
+      q &&
+      typeof q.text === "string" &&
+      q.text.trim().length > 0 &&
+      Array.isArray(q.options) &&
+      q.options.length >= 2 &&
+      typeof q.correctAnswer === "number"
+  );
+
+  if (validQuestions.length === 0) {
+    res.status(500).json({ error: "AI returned questions in an unrecognized format. Please try again." });
+    return;
+  }
+
+  const normalizedQuestions = validQuestions.map((q, i) => ({
+    id: typeof q.id === "number" ? q.id : i + 1,
+    text: q.text.trim(),
+    options: q.options.map((o: any) => String(o)),
+    correctAnswer: Math.max(0, Math.min(q.correctAnswer, q.options.length - 1)),
+  }));
+
   res.json({
     topic,
     difficulty,
-    questions: parsed2.questions,
+    questions: normalizedQuestions,
   });
 });
 

@@ -258,7 +258,7 @@ export default function StudentQuizzes() {
                 {generatedQuiz?.questions.map((q, qIdx) => (
                   <div key={q.id} className="bg-card p-6 rounded-xl border border-border">
                     <p className="font-semibold text-[17px] leading-relaxed mb-4">
-                      <span className="text-muted-foreground font-bold mr-2">{qIdx + 1}.</span>{q.question}
+                      <span className="text-muted-foreground font-bold mr-2">{qIdx + 1}.</span>{q.text}
                     </p>
                     <RadioGroup value={genAnswers[qIdx]?.toString()} onValueChange={(v) => setGenAnswers(prev => ({ ...prev, [qIdx]: parseInt(v) }))} className="gap-3">
                       {q.options.map((opt, oIdx) => (
