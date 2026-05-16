@@ -28,16 +28,16 @@ export function AppLayout({ children, title }: { children: ReactNode; title: str
   const navItems = {
     student: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { name: "My Quizzes", href: "/dashboard", icon: BookOpen }, // We keep them on dashboard as requested by original UI
-      { name: "Progress", href: "/dashboard", icon: TrendingUp },
+      { name: "My Quizzes", href: "/dashboard/quizzes", icon: BookOpen },
+      { name: "Progress", href: "/dashboard/progress", icon: TrendingUp },
     ],
     admin: [
-      { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
-      { name: "Users", href: "/admin", icon: Users },
+      { name: "Overview", href: "/admin", icon: LayoutDashboard },
+      { name: "Users", href: "/admin/users", icon: Users },
     ],
     client: [
       { name: "Overview", href: "/client", icon: LayoutDashboard },
-      { name: "Reports", href: "/client", icon: BarChart3 },
+      { name: "Reports", href: "/client/reports", icon: BarChart3 },
     ],
   };
 
