@@ -9,8 +9,12 @@ import { setAuthTokenGetter } from "@workspace/api-client-react";
 import Login from "@/pages/auth/login";
 import AboutPage from "@/pages/about";
 import StudentDashboard from "@/pages/student";
+import StudentQuizzes from "@/pages/student/quizzes";
+import StudentProgress from "@/pages/student/progress";
 import AdminDashboard from "@/pages/admin";
+import AdminUsers from "@/pages/admin/users";
 import ClientDashboard from "@/pages/client";
+import ClientReports from "@/pages/client/reports";
 
 // Wire the stored auth token into every API request
 setAuthTokenGetter(() => localStorage.getItem("auth_token"));
@@ -19,10 +23,10 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ component: Component, allowedRoles }: { component: any, allowedRoles?: string[] }) {
   const { user } = useAuth();
-  
+
   if (!user) return <Redirect to="/" />;
   if (allowedRoles && !allowedRoles.includes(user.role)) return <Redirect to="/" />;
-  
+
   return <Component />;
 }
 
@@ -31,15 +35,34 @@ function Router() {
     <Switch>
       <Route path="/" component={Login} />
       <Route path="/about" component={AboutPage} />
+
+      {/* Student routes */}
       <Route path="/dashboard">
         {() => <ProtectedRoute component={StudentDashboard} allowedRoles={["student"]} />}
       </Route>
+      <Route path="/dashboard/quizzes">
+        {() => <ProtectedRoute component={StudentQuizzes} allowedRoles={["student"]} />}
+      </Route>
+      <Route path="/dashboard/progress">
+        {() => <ProtectedRoute component={StudentProgress} allowedRoles={["student"]} />}
+      </Route>
+
+      {/* Admin routes */}
       <Route path="/admin">
         {() => <ProtectedRoute component={AdminDashboard} allowedRoles={["admin"]} />}
       </Route>
+      <Route path="/admin/users">
+        {() => <ProtectedRoute component={AdminUsers} allowedRoles={["admin"]} />}
+      </Route>
+
+      {/* Client routes */}
       <Route path="/client">
         {() => <ProtectedRoute component={ClientDashboard} allowedRoles={["client"]} />}
       </Route>
+      <Route path="/client/reports">
+        {() => <ProtectedRoute component={ClientReports} allowedRoles={["client"]} />}
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
