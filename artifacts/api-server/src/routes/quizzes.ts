@@ -19,8 +19,33 @@ function getUserIdFromToken(authHeader: string | undefined): number | null {
   }
 }
 
+type SubmitGeneratedQuizInput = {
+  topic: string;
+  difficulty: string;
+  questions: Array<{ id: number; text: string; options: string[]; correctAnswer: number }>;
+  answers: number[];
+};
+
+function parseSubmitGeneratedQuizBody(body: any): SubmitGeneratedQuizInput | null {
+  if (
+    typeof body?.topic !== "string" || !body.topic.trim() ||
+    typeof body?.difficulty !== "string" ||
+    !Array.isArray(body?.questions) || body.questions.length === 0 ||
+    !Array.isArray(body?.answers)
+  ) return null;
+  for (const q of body.questions) {
+    if (typeof q?.text !== "string" || !Array.isArray(q?.options) || typeof q?.correctAnswer !== "number") return null;
+  }
+  return body as SubmitGeneratedQuizInput;
+}
+
+// List only manually-created quizzes (not AI-generated ones)
 router.get("/quizzes", async (_req, res): Promise<void> => {
-  const quizzes = await db.select().from(quizzesTable).orderBy(quizzesTable.createdAt);
+  const quizzes = await db
+    .select()
+    .from(quizzesTable)
+    .where(eq(quizzesTable.isAiGenerated, false))
+    .orderBy(quizzesTable.createdAt);
 
   res.json(quizzes.map(q => ({
     id: q.id,
@@ -32,6 +57,7 @@ router.get("/quizzes", async (_req, res): Promise<void> => {
   })));
 });
 
+// Generate a quiz using AI (returns questions, does NOT save yet)
 router.post("/quizzes/generate", async (req, res): Promise<void> => {
   const userId = getUserIdFromToken(req.headers.authorization);
   if (!userId) {
@@ -119,6 +145,60 @@ Rules:
     topic,
     difficulty,
     questions: normalizedQuestions,
+  });
+});
+
+// Submit answers for an AI-generated quiz — saves quiz + result to DB
+router.post("/quizzes/generate-submit", async (req, res): Promise<void> => {
+  const userId = getUserIdFromToken(req.headers.authorization);
+  if (!userId) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+
+  const body = parseSubmitGeneratedQuizBody(req.body);
+  if (!body) {
+    res.status(400).json({ error: "Invalid quiz submission data." });
+    return;
+  }
+
+  const { topic, difficulty, questions, answers } = body;
+
+  // Persist the AI-generated quiz so results can reference it
+  const title = `AI Quiz: ${topic.charAt(0).toUpperCase() + topic.slice(1)}`;
+  const [savedQuiz] = await db.insert(quizzesTable).values({
+    title,
+    subject: topic,
+    difficulty,
+    questions,
+    isAiGenerated: true,
+  }).returning();
+
+  // Score the attempt
+  let correct = 0;
+  questions.forEach((q, i) => {
+    if (answers[i] === q.correctAnswer) correct++;
+  });
+  const totalQuestions = questions.length;
+  const score = Math.round((correct / totalQuestions) * 100);
+  const passed = score >= 60;
+
+  const [result] = await db.insert(quizResultsTable).values({
+    userId,
+    quizId: savedQuiz.id,
+    score,
+    totalQuestions,
+    correct,
+    passed,
+  }).returning();
+
+  res.json({
+    quizId: result.quizId,
+    score: result.score,
+    totalQuestions: result.totalQuestions,
+    correct: result.correct,
+    passed: result.passed,
+    completedAt: result.completedAt.toISOString(),
   });
 });
 

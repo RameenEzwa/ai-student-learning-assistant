@@ -175,6 +175,31 @@ export const GenerateQuizResponse = zod.object({
 
 
 /**
+ * @summary Submit answers for an AI-generated quiz and save the result
+ */
+export const SubmitGeneratedQuizBody = zod.object({
+  "topic": zod.string(),
+  "difficulty": zod.string(),
+  "questions": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "options": zod.array(zod.string()),
+  "correctAnswer": zod.number()
+})),
+  "answers": zod.array(zod.number())
+})
+
+export const SubmitGeneratedQuizResponse = zod.object({
+  "quizId": zod.number(),
+  "score": zod.number(),
+  "totalQuestions": zod.number(),
+  "correct": zod.number(),
+  "passed": zod.boolean(),
+  "completedAt": zod.string()
+})
+
+
+/**
  * @summary List available quizzes
  */
 export const ListQuizzesResponseItem = zod.object({

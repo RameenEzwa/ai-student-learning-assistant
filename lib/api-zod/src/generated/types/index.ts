@@ -29,6 +29,7 @@ export * from './quizReport';
 export * from './quizResult';
 export * from './quizSubmission';
 export * from './studentStat';
+export * from './submitGeneratedQuizInput';
 export * from './user';
 export * from './userInput';
 export * from './userInputRole';

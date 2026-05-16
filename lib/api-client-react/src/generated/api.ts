@@ -37,6 +37,7 @@ import type {
   QuizResult,
   QuizSubmission,
   StudentStat,
+  SubmitGeneratedQuizInput,
   User,
   UserInput
 } from './api.schemas';
@@ -1014,6 +1015,77 @@ export const useGenerateQuiz = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getGenerateQuizMutationOptions(options));
+    }
+
+export const getSubmitGeneratedQuizUrl = () => {
+
+
+
+
+  return `/api/quizzes/generate-submit`
+}
+
+/**
+ * @summary Submit answers for an AI-generated quiz and save the result
+ */
+export const submitGeneratedQuiz = async (submitGeneratedQuizInput: SubmitGeneratedQuizInput, options?: RequestInit): Promise<QuizResult> => {
+
+  return customFetch<QuizResult>(getSubmitGeneratedQuizUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      submitGeneratedQuizInput,)
+  }
+);}
+
+
+
+
+export const getSubmitGeneratedQuizMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitGeneratedQuiz>>, TError,{data: BodyType<SubmitGeneratedQuizInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitGeneratedQuiz>>, TError,{data: BodyType<SubmitGeneratedQuizInput>}, TContext> => {
+
+const mutationKey = ['submitGeneratedQuiz'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitGeneratedQuiz>>, {data: BodyType<SubmitGeneratedQuizInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitGeneratedQuiz(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitGeneratedQuizMutationResult = NonNullable<Awaited<ReturnType<typeof submitGeneratedQuiz>>>
+    export type SubmitGeneratedQuizMutationBody = BodyType<SubmitGeneratedQuizInput>
+    export type SubmitGeneratedQuizMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Submit answers for an AI-generated quiz and save the result
+ */
+export const useSubmitGeneratedQuiz = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitGeneratedQuiz>>, TError,{data: BodyType<SubmitGeneratedQuizInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitGeneratedQuiz>>,
+        TError,
+        {data: BodyType<SubmitGeneratedQuizInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitGeneratedQuizMutationOptions(options));
     }
 
 export const getListQuizzesUrl = () => {

@@ -170,6 +170,13 @@ export interface GeneratedQuiz {
   questions: GeneratedQuestion[];
 }
 
+export interface SubmitGeneratedQuizInput {
+  topic: string;
+  difficulty: string;
+  questions: GeneratedQuestion[];
+  answers: number[];
+}
+
 export type ActivityItemType = typeof ActivityItemType[keyof typeof ActivityItemType];
 
 

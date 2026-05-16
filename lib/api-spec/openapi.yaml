@@ -225,6 +225,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/GeneratedQuiz"
 
+  /quizzes/generate-submit:
+    post:
+      operationId: submitGeneratedQuiz
+      tags: [quizzes]
+      summary: Submit answers for an AI-generated quiz and save the result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitGeneratedQuizInput"
+      responses:
+        "200":
+          description: Quiz result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizResult"
+
   /quizzes:
     get:
       operationId: listQuizzes
@@ -549,6 +568,23 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GeneratedQuestion"
+
+    SubmitGeneratedQuizInput:
+      type: object
+      required: [topic, difficulty, questions, answers]
+      properties:
+        topic:
+          type: string
+        difficulty:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeneratedQuestion"
+        answers:
+          type: array
+          items:
+            type: integer
 
     ActivityItem:
       type: object

@@ -9,6 +9,7 @@ export const quizzesTable = pgTable("quizzes", {
   subject: text("subject").notNull(),
   difficulty: text("difficulty").notNull().default("medium"),
   questions: jsonb("questions").notNull().$type<Array<{ id: number; text: string; options: string[]; correctAnswer: number }>>(),
+  isAiGenerated: boolean("is_ai_generated").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

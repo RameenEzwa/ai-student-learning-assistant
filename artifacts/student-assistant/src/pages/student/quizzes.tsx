@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/layout/app-layout";
-import { useListQuizzes, useSubmitQuiz, useGenerateQuiz } from "@workspace/api-client-react";
+import { useListQuizzes, useSubmitQuiz, useGenerateQuiz, useSubmitGeneratedQuiz } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ export default function StudentQuizzes() {
   const { data: quizzes, isLoading: quizzesLoading } = useListQuizzes();
   const submitQuiz = useSubmitQuiz();
   const generateQuiz = useGenerateQuiz();
+  const submitGeneratedQuiz = useSubmitGeneratedQuiz();
 
   const activeQuizData = selectedQuiz ? quizzes?.find(q => q.id === selectedQuiz) : null;
 
@@ -71,12 +72,19 @@ export default function StudentQuizzes() {
 
   const handleGenQuizSubmit = () => {
     if (!generatedQuiz) return;
-    let correct = 0;
-    generatedQuiz.questions.forEach((q, i) => {
-      if (genAnswers[i] === q.correctAnswer) correct++;
+    const answersArray = generatedQuiz.questions.map((_, i) => genAnswers[i] ?? 0);
+    submitGeneratedQuiz.mutate({
+      data: {
+        topic: generatedQuiz.topic,
+        difficulty: generatedQuiz.difficulty,
+        questions: generatedQuiz.questions,
+        answers: answersArray,
+      },
+    }, {
+      onSuccess: (result) => {
+        setGenResult({ score: result.score, correct: result.correct, total: result.totalQuestions });
+      },
     });
-    const total = generatedQuiz.questions.length;
-    setGenResult({ score: Math.round((correct / total) * 100), correct, total });
   };
 
   return (
