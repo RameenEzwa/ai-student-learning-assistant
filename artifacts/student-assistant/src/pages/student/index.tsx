@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/layout/app-layout";
-import { useGetChatHistory, useSendMessage, useListQuizzes, useSubmitQuiz, getGetChatHistoryQueryKey, useGenerateQuiz } from "@workspace/api-client-react";
+import { useGetChatHistory, useSendMessage, useListQuizzes, useSubmitQuiz, getGetChatHistoryQueryKey, useGenerateQuiz, useSubmitGeneratedQuiz } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ export default function StudentDashboard() {
   const { data: quizzes, isLoading: quizzesLoading } = useListQuizzes();
   const submitQuiz = useSubmitQuiz();
   const generateQuiz = useGenerateQuiz();
+  const submitGeneratedQuiz = useSubmitGeneratedQuiz();
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,13 +102,19 @@ export default function StudentDashboard() {
 
   const handleGenQuizSubmit = () => {
     if (!generatedQuiz) return;
-    let correct = 0;
-    generatedQuiz.questions.forEach((q, i) => {
-      if (genAnswers[i] === q.correctAnswer) correct++;
+    const answersArray = generatedQuiz.questions.map((_, i) => genAnswers[i] ?? 0);
+    submitGeneratedQuiz.mutate({
+      data: {
+        topic: generatedQuiz.topic,
+        difficulty: generatedQuiz.difficulty,
+        questions: generatedQuiz.questions,
+        answers: answersArray,
+      },
+    }, {
+      onSuccess: (result) => {
+        setGenResult({ score: result.score, correct: result.correct, total: result.totalQuestions });
+      },
     });
-    const total = generatedQuiz.questions.length;
-    const score = Math.round((correct / total) * 100);
-    setGenResult({ score, correct, total });
   };
 
   const activeQuizData = selectedQuiz ? quizzes?.find(q => q.id === selectedQuiz) : null;
