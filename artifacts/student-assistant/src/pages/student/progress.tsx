@@ -27,7 +27,7 @@ export default function StudentProgress() {
   const calculatePerformancePrediction = async () => {
     setAiLoading(true);
     try {
-            const response = await fetch("https://edu-assistant-ai-1-f2024376149.replit.dev/api/predict", {
+                const response = await fetch("https://edu-assistant-ai-1-f2024376149.replit.dev:5000/api/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hours, attendance, sleep, tutoring }),
