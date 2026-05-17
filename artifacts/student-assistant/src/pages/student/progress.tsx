@@ -1,129 +1,170 @@
-import { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/layout/app-layout";
-import { useGetProgress, useGetQuizReports } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BookOpen, Target, TrendingUp, Award, CheckCircle2, XCircle } from "lucide-react";
+import { BookOpen, Target, TrendingUp, Award, BrainCircuit } from "lucide-react";
 
 export default function StudentProgress() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
+  // AI Prediction States
+  const [predictedScore, setPredictedScore] = useState<number | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // Form states for dynamic machine learning inputs
+  const [hours, setHours] = useState(20);
+  const [attendance, setAttendance] = useState(90);
+  const [sleep, setSleep] = useState(8);
+  const [tutoring, setTutoring] = useState(2);
+
   useEffect(() => {
     if (user && user.role !== "student") setLocation("/");
   }, [user, setLocation]);
 
-  const { data: progress, isLoading: progressLoading } = useGetProgress();
-  const { data: reports, isLoading: reportsLoading } = useGetQuizReports();
+  // Connects to your live python api.py server running on port 5000
+  const calculatePerformancePrediction = async () => {
+    setAiLoading(true);
+    try {
+            const response = await fetch("https://edu-assistant-ai-1-f2024376149.replit.dev/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hours, attendance, sleep, tutoring }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPredictedScore(data.predicted_score);
+      }
+    } catch (error) {
+      console.error("Could not communicate with Kaggle AI backend:", error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
-    <AppLayout title="My Progress">
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          { label: "Quizzes Taken", value: progress?.totalQuizzes ?? 0, suffix: "", icon: BookOpen, color: "bg-blue-50 text-blue-600" },
-          { label: "Average Score", value: progressLoading ? "—" : `${Number(progress?.averageScore ?? 0).toFixed(1)}`, suffix: "%", icon: Target, color: "bg-green-50 text-green-600" },
-          { label: "Completion Rate", value: progressLoading ? "—" : `${Number(progress?.completionRate ?? 0).toFixed(1)}`, suffix: "%", icon: TrendingUp, color: "bg-purple-50 text-purple-600" },
-          { label: "Current Streak", value: progress?.streak ?? 0, suffix: " days", icon: Award, color: "bg-orange-50 text-orange-600" },
-        ].map(({ label, value, suffix, icon: Icon, color }) => (
-          <Card key={label} className="border-border shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <span className="text-sm font-semibold text-muted-foreground">{label}</span>
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
-                <Icon className="w-4 h-4" />
-              </div>
+    <AppLayout title="Academic Progress">
+      <div className="space-y-6 p-6 max-w-5xl mx-auto">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Academic Progress</h1>
+          <p className="text-muted-foreground">
+            View your learning insights and real-world performance prediction.
+          </p>
+        </div>
+
+        {/* Overview Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Study Hours Tracker</CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-foreground">{value}{suffix}</div>
+              <div className="text-2xl font-bold">{hours} Hours</div>
             </CardContent>
           </Card>
-        ))}
-      </div>
-
-      {/* Score Distribution */}
-      {!reportsLoading && (reports?.length ?? 0) > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {(() => {
-            const passed = reports?.filter(r => r.passed).length ?? 0;
-            const failed = (reports?.length ?? 0) - passed;
-            const avg = reports?.length ? Math.round(reports.reduce((s, r) => s + r.score, 0) / reports.length) : 0;
-            return [
-              { label: "Passed", value: passed, color: "text-green-600", bg: "bg-green-50 border-green-200" },
-              { label: "Failed", value: failed, color: "text-red-600", bg: "bg-red-50 border-red-200" },
-              { label: "Avg Score", value: `${avg}%`, color: "text-primary", bg: "bg-primary/5 border-primary/20" },
-            ].map(({ label, value, color, bg }) => (
-              <div key={label} className={`rounded-xl border-2 p-5 ${bg} flex flex-col items-center justify-center`}>
-                <span className={`text-4xl font-black ${color}`}>{value}</span>
-                <span className="text-sm font-semibold text-muted-foreground mt-1">{label}</span>
-              </div>
-            ));
-          })()}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{attendance}%</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Sleep Hours</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{sleep} Hours</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tutoring Sessions</CardTitle>
+              <Award className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{tutoring} Sessions</div>
+            </CardContent>
+          </Card>
         </div>
-      )}
 
-      {/* Quiz History */}
-      <Card className="border-border shadow-sm">
-        <CardHeader className="border-b">
-          <CardTitle className="text-lg font-bold">Quiz History</CardTitle>
-          <p className="text-sm text-muted-foreground mt-0.5">All your completed quiz attempts</p>
-        </CardHeader>
-        <CardContent className="p-0">
-          {reportsLoading ? (
-            <div className="p-6 space-y-3">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />)}
+        {/* --- Kaggle AI Dataset Real-World Prediction Card --- */}
+        <Card className="border-indigo-200 bg-gradient-to-r from-slate-50 to-indigo-50/30">
+          <CardHeader className="flex flex-row items-center gap-3">
+            <div className="p-2 bg-indigo-600 rounded-lg text-white">
+              <BrainCircuit className="h-6 w-6" />
             </div>
-          ) : (reports?.length ?? 0) === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <p className="text-base">No quiz history yet.</p>
-              <p className="text-sm mt-1">Complete a quiz to see your results here.</p>
+            <div>
+              <CardTitle className="text-xl">Kaggle Dataset ML Prediction Agent</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Trained live via Scikit-Learn on 6,607 student metrics
+              </p>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="pl-6">Quiz</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Result</TableHead>
-                  <TableHead className="pr-6">Performance</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reports?.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell className="pl-6 font-semibold text-sm">{report.quizTitle}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{report.subject}</TableCell>
-                    <TableCell>
-                      <span className={`font-black text-sm ${report.passed ? "text-green-600" : "text-red-600"}`}>
-                        {report.score}%
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${report.passed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                        {report.passed ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {report.passed ? "Passed" : "Failed"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="pr-6">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-28 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${report.score >= 70 ? "bg-green-500" : report.score >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
-                            style={{ width: `${report.score}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground w-8">{report.score}%</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Study Hours</label>
+                <input 
+                  type="number" 
+                  value={hours} 
+                  onChange={(e) => setHours(Number(e.target.value))}
+                  className="w-full p-2 border rounded bg-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Attendance (%)</label>
+                <input 
+                  type="number" 
+                  value={attendance} 
+                  onChange={(e) => setAttendance(Number(e.target.value))}
+                  className="w-full p-2 border rounded bg-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Sleep Hours</label>
+                <input 
+                  type="number" 
+                  value={sleep} 
+                  onChange={(e) => setSleep(Number(e.target.value))}
+                  className="w-full p-2 border rounded bg-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Tutoring Sessions</label>
+                <input 
+                  type="number" 
+                  value={tutoring} 
+                  onChange={(e) => setTutoring(Number(e.target.value))}
+                  className="w-full p-2 border rounded bg-white text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 pt-2">
+              <button
+                onClick={calculatePerformancePrediction}
+                disabled={aiLoading}
+                className="px-5 py-2.5 bg-indigo-600 text-white rounded-md font-medium text-sm hover:bg-indigo-700 transition disabled:opacity-50 shadow-sm"
+              >
+                {aiLoading ? "Processing Dataset Factors..." : "Run AI Prediction"}
+              </button>
+
+              {predictedScore !== null && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-white border border-indigo-100 rounded-md shadow-sm">
+                  <span className="text-sm font-medium text-gray-600">AI Predicted Score:</span>
+                  <span className="text-xl font-black text-indigo-600">{predictedScore} / 100</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </AppLayout>
   );
 }
