@@ -18,12 +18,16 @@ export default defineConfig({
     },
   },
   server: {
-    port: port,
+    port,
+    strictPort: true,
     host: "0.0.0.0",
-    allowedHosts: true, // <-- THIS UNBLOCKS THE PREVIEW
+    allowedHosts: true,
+    fs: {
+      strict: true,
+    },
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:5000",
+        target: "http://127.0.0.1:8080",
         changeOrigin: true,
         secure: false,
       },
